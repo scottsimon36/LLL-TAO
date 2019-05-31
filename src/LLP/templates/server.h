@@ -32,6 +32,7 @@ namespace LLP
     /* forward declarations */
     class AddressManager;
     class DDOS_Filter;
+    typedef struct ssl_st SSL;
 
 
     /** Server
@@ -50,6 +51,12 @@ namespace LLP
         /* The DDOS variables. */
         std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
         std::atomic<bool> fDDOS;
+
+        /* Determine if Server should use an SSL connection. */
+        std::atomic<bool> fSSL;
+
+        /* The ssl object for SSL LLP connections. */
+        SSL *pSSL;
 
         std::condition_variable MANAGER;
 
@@ -100,7 +107,8 @@ namespace LLP
                              bool fListen = true,
                              bool fMeter = false,
                              bool fManager = false,
-                             uint32_t nSleepTimeIn = 1000);
+                             uint32_t nSleepTimeIn = 1000,
+                             bool fSSL_ = false);
 
 
         /** Default Destructor **/

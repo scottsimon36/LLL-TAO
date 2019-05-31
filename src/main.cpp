@@ -66,7 +66,6 @@ int main(int argc, char** argv)
     if (!LLP::NetworkStartup())
     {
         printf("ERROR: Failed initializing network resources");
-
         return 0;
     }
 
@@ -158,6 +157,10 @@ int main(int argc, char** argv)
     Legacy::InitializeScripts();
 
 
+    /* Determine if LLP should use SSL or not. */
+    bool fUseSSL = config::GetBoolArg(std::string("-ssl"));
+
+
     /** Handle Rescanning. **/
     if(config::GetBoolArg(std::string("-rescan")))
         Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
@@ -218,7 +221,8 @@ int main(int argc, char** argv)
         60,
         config::GetBoolArg("-listen", true),
         false,
-        false);
+        false,
+        fUseSSL);
 
 
     /* Get the port for the Core API Server. */
@@ -235,7 +239,8 @@ int main(int argc, char** argv)
         60,
         config::GetBoolArg("-listen", true),
         false,
-        false);
+        false,
+        fUseSSL);
 
 
     /* Set up Mining Server */

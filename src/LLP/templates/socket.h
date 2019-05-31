@@ -17,12 +17,14 @@ ________________________________________________________________________________
 
 
 #include <LLP/include/base_address.h>
-#include <LLP/include/network.h>
 
 #include <vector>
 #include <cstdint>
 #include <mutex>
 #include <atomic>
+
+
+typedef struct ssl_st SSL;
 
 namespace LLP
 {
@@ -41,6 +43,12 @@ namespace LLP
         /** Mutex for thread synchronization. **/
         mutable std::mutex PACKET_MUTEX;
         mutable std::mutex DATA_MUTEX;
+
+        /* Flag for SSL communication. */
+        std::atomic<bool> fSSL;
+
+        /* SSL object */
+        SSL *pSSL;
 
     protected:
 
@@ -216,6 +224,16 @@ namespace LLP
          *
          **/
         char* Error() const;
+
+
+        /** SetSSL
+         *
+         *  Sets the SSL flag for sockets to use ssl or not.
+         *
+         *  @param[in] fSSL_ The flag to set SSL on or off.
+         *
+         **/
+         void SetSSL(bool fSSL_);
 
 
     private:

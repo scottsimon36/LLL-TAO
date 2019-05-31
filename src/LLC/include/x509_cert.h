@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <cstdint>
 
 /** Forward declarations. **/
+typedef struct ssl_ctx_st SSL_CTX;
 typedef struct ssl_st SSL;
 typedef struct rsa_st RSA;
 typedef struct evp_pkey_st EVP_PKEY;
@@ -63,6 +64,43 @@ namespace LLC
          *
          **/
         bool Init_SSL(SSL *ssl);
+
+
+        /** Init_SSL_CTX
+         *
+         *  Modifies the SSL context internal state with certificate and key information. Every SSL object created with
+         *  this context will share the same certification info.
+         *
+         *  @param[in/out] ssl_ctx The ssl context to load certificate and private key information into.
+         *
+         *  @return Returns true if successfully applied, false otherwise.
+         *
+         **/
+        bool Init_SSL(SSL_CTX *ssl_ctx);
+
+
+        /** Verify
+         *
+         *  Check the authenticity of the public key in the certificate and the private key paired with it.
+         *
+         *  @param[in] ssl The ssl object to check.
+         *
+         *  @return Returns true if verified, false otherwise.
+         *
+         **/
+         bool Verify(SSL *ssl);
+
+
+         /** Verify
+          *
+          *  Check the authenticity of the public key in the certificate and the private key paired with it.
+          *
+          *  @param[in] ssl_ctx The ssl context object to check.
+          *
+          *  @return Returns true if verified, false otherwise.
+          *
+          **/
+          bool Verify(SSL_CTX *ssl_ctx);
 
 
         /** Print

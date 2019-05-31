@@ -76,9 +76,17 @@ typedef u_int SOCKET;
 
 #endif // ifdef WIN32
 
+/** Forward declarations. **/
+typedef struct ssl_ctx_st SSL_CTX;
+
 
 namespace LLP
 {
+
+    /* The global SSL Context for the LLP */
+    extern SSL_CTX *pSSL_CTX;
+
+
     /** NetworkStartup
      *
      *  Perform any necessary processing to initialize the underlying network

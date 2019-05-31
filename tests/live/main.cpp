@@ -64,6 +64,13 @@ void PeerCertificateInfo(SSL *ssl)
         debug::log(0, "Peer does not have certificate.");
 }
 
+static int always_true_callback(X509_STORE_CTX *ctx, void *arg)
+{
+    printf("callback!\n");
+
+    return 1;
+}
+
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
@@ -71,21 +78,27 @@ int main(int argc, char** argv)
     config::ParseParameters(argc, argv);
     LLC::X509Cert certificate;
 
-    certificate.Write();
-
     debug::log(0, "My certificate: ");
     certificate.Print();
 
+    certificate.Write();
+
     SSL_load_error_strings();
+    ERR_load_crypto_strings();
+
     OpenSSL_add_ssl_algorithms();
 
     SSL_CTX *ssl_ctx = SSL_CTX_new(SSLv23_method());
+
+    SSL_CTX_set_cert_verify_callback(ssl_ctx, always_true_callback, NULL);
+
+    debug::log(0, "Default director path: ", X509_get_default_cert_dir());
+
+    certificate.Init_SSL(ssl_ctx);
+    certificate.Verify(ssl_ctx);
+
     SSL *ssl = SSL_new(ssl_ctx);
-
-    certificate.Init_SSL(ssl);
-
-    if(SSL_check_private_key(ssl) != 1)
-        debug::error("Private key does not match the certificate public key.");
+    certificate.Verify(ssl);
 
     int sd = -1;
     int err = 0;
@@ -113,46 +126,66 @@ int main(int argc, char** argv)
         if(err == -1)
         debug::error("listen");
 
-        struct sockaddr_in sa_cli;
-        socklen_t client_len = sizeof(sa_cli);
-        sd = accept(listen_sd, (struct sockaddr*) &sa_cli, &client_len);
-        if(sd == -1)
-            debug::error("accept");
+        //while(true)
+        //{
+
+            struct sockaddr_in sa_cli;
+            socklen_t client_len = sizeof(sa_cli);
+            sd = accept(listen_sd, (struct sockaddr*) &sa_cli, &client_len);
+            if(sd == -1)
+                debug::error("accept");
 
 
-        close(listen_sd);
+            //close(listen_sd);
 
-        printf ("Connection from %x, port %u\n", sa_cli.sin_addr.s_addr, sa_cli.sin_port);
+            printf ("Connection from %x, port %u\n", sa_cli.sin_addr.s_addr, sa_cli.sin_port);
 
-        SSL_set_fd (ssl, sd);
-        err = SSL_accept(ssl);
-        if(err == -1)
-        {
-            debug::error("SSL_accept: ", SSL_get_error(ssl, err));
-            ERR_print_errors_fp(stderr);
-        }
+            SSL_set_fd (ssl, sd);
+            err = SSL_accept(ssl);
+            if(err == -1)
+            {
+                debug::error("SSL_accept: ", SSL_get_error(ssl, err));
+                ERR_print_errors_fp(stderr);
+            }
 
-        debug::log(0, "SSL connection using ", SSL_get_cipher(ssl));
+            debug::log(0, "SSL connection using ", SSL_get_cipher(ssl));
 
-        //PeerCertificateInfo(ssl);
+            int rc = SSL_get_verify_result(ssl);
+            if(rc != X509_V_OK)
+            {
+                if (rc == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT || rc == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN)
+                {
+                    debug::error("self signed certificate");
+                }
+                else
+                {
+                    debug::error("Certificate verification error: ", SSL_get_verify_result(ssl));
+                    SSL_CTX_free(ssl_ctx);
+                    return 0;
+                }
+            }
 
-        err = recv(sd, buf, sizeof(buf) - 1, MSG_DONTWAIT);
-        if(err != -1)
+            //PeerCertificateInfo(ssl);
+
+            err = recv(sd, buf, sizeof(buf) - 1, MSG_DONTWAIT);
+            if(err != -1)
+                buf[err] = '\0';
+
+            debug::log(0, "Got ", err, " chars: ", buf);
+
+            err = SSL_read(ssl, buf, sizeof(buf) - 1);
+            if(err == -1)
+                debug::error("SSL_read");
+
             buf[err] = '\0';
 
-        debug::log(0, "Got ", err, " chars: ", buf);
+            debug::log(0, "SSL: Got ", err, " chars: ", buf);
 
-        err = SSL_read(ssl, buf, sizeof(buf) - 1);
-        if(err == -1)
-            debug::error("SSL_read");
+            err = SSL_write(ssl, "I hear you.", strlen("I hear you."));
+            if(err == -1)
+                debug::error("SSL_write");
 
-        buf[err] = '\0';
-
-        debug::log(0, "SSL: Got ", err, " chars: ", buf);
-
-        err = SSL_write(ssl, "I hear you.", strlen("I hear you."));
-        if(err == -1)
-            debug::error("SSL_write");
+        //}
 
 
     }

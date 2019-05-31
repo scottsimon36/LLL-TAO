@@ -32,6 +32,8 @@ ________________________________________________________________________________
 #include <functional>
 #include <numeric>
 
+#include <openssl/ssl.h>
+
 
 namespace LLP
 {
@@ -49,8 +51,10 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool fDDOS_,
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen,
-                         bool fMeter, bool fManager, uint32_t nSleepTimeIn)
+                         bool fMeter, bool fManager, uint32_t nSleepTimeIn, bool fSSL_)
     : fDDOS(fDDOS_)
+    , fSSL(fSSL_)
+    , pSSL(SSL_new(pSSL_CTX))
     , MANAGER()
     , PORT(nPort)
     , MAX_THREADS(nMaxThreads)
@@ -61,8 +65,7 @@ namespace LLP
     {
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
         {
-            DATA_THREADS.push_back(new DataThread<ProtocolType>(
-                index, fDDOS_, rScore, cScore, nTimeout, fMeter));
+            DATA_THREADS.push_back(new DataThread<ProtocolType>(index, fDDOS_, rScore, cScore, nTimeout, fMeter, fSSL_));
         }
 
         /* Initialize the address manager. */
@@ -455,6 +458,7 @@ namespace LLP
                     struct sockaddr_in sockaddr;
 
                     hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v4);
+
                     if (hSocket != INVALID_SOCKET)
                         addr = BaseAddress(sockaddr);
                 }
@@ -463,6 +467,7 @@ namespace LLP
                     struct sockaddr_in6 sockaddr;
 
                     hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v6);
+
                     if (hSocket != INVALID_SOCKET)
                         addr = BaseAddress(sockaddr);
                 }
@@ -474,11 +479,24 @@ namespace LLP
                 }
                 else
                 {
+
+                    /* TCP connection is ready. Do server side SSL. */
+                    if(fSSL.load())
+                    {
+                        SSL_set_fd(pSSL, hSocket);
+                        if(SSL_accept(pSSL) == SOCKET_ERROR)
+                            debug::error(FUNCTION, "SSL Socket error SSL_accept failed: ", WSAGetLastError());
+
+                        debug::log(0, FUNCTION, Name(), " : SSL Connection using ", SSL_get_cipher(pSSL));
+                    }
+
+
                     /* Create new DDOS Filter if Needed. */
                     if(!DDOS_MAP.count(addr))
                         DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
 
                     Socket sockNew(hSocket, addr);
+                    sockNew.SetSSL(fSSL.load());
 
                     /* DDOS Operations: Only executed when DDOS is enabled. */
                     if((fDDOS && DDOS_MAP[addr]->Banned()))
@@ -493,6 +511,9 @@ namespace LLP
                         debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
 
                         closesocket(hSocket);
+
+                        if(fSSL.load())
+                            SSL_shutdown(pSSL);
 
                         continue;
                     }
@@ -638,11 +659,7 @@ namespace LLP
 
            uint32_t nGlobalConnections = 0;
            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-           {
-               DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
-               nGlobalConnections += dt->nConnections;
-           }
+               nGlobalConnections += DATA_THREADS[nThread]->nConnections;
 
 
            uint32_t RPS = TotalRequests() / TIMER.Elapsed();
@@ -656,18 +673,13 @@ namespace LLP
     }
 
 
-    /*  Used for Meter. Adds up the total amount of requests from each
-     *  Data Thread. */
+    /*  Used for Meter. Adds up the total amount of requests from each Data Thread. */
     template <class ProtocolType>
     uint32_t Server<ProtocolType>::TotalRequests()
     {
        uint32_t nTotalRequests = 0;
        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-       {
-           DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
-           nTotalRequests += dt->REQUESTS;
-       }
+           nTotalRequests += DATA_THREADS[nThread]->REQUESTS;
 
        return nTotalRequests;
     }
@@ -678,11 +690,7 @@ namespace LLP
     void Server<ProtocolType>::ClearRequests()
     {
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-        {
-            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
-            dt->REQUESTS = 0;
-        }
+            DATA_THREADS[nThread]->REQUESTS = 0;
     }
 
 

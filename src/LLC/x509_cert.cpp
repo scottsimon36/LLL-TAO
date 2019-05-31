@@ -99,13 +99,55 @@ namespace LLC
         if(pkey == nullptr)
             return debug::error(FUNCTION, "private key is null.");
 
-        /* Assign the certiicate to the SSL object. */
+        /* Assign the certificate to the SSL object. */
         if(SSL_use_certificate(ssl, px509) != 1)
             return debug::error(FUNCTION, "Failed to initialize SSL with certificate.");
 
         /* Assign the private key to the SSL object. */
         if(SSL_use_PrivateKey(ssl, pkey) != 1)
             return debug::error(FUNCTION, "Failed to initialize SSL with private key.");
+
+        return true;
+    }
+
+    /*  Modifies the SSL internal state with certificate and key information. */
+    bool X509Cert::Init_SSL(SSL_CTX *ssl_ctx)
+    {
+        /* Check for null data. */
+        if(ssl_ctx == nullptr)
+            return debug::error(FUNCTION, "SSL object is null.");
+        if(px509 == nullptr)
+            return debug::error(FUNCTION, "certificate is null.");
+        if(pkey == nullptr)
+            return debug::error(FUNCTION, "private key is null.");
+
+        /* Assign the certificate to the SSL object. */
+        if(SSL_CTX_use_certificate(ssl_ctx, px509) != 1)
+            return debug::error(FUNCTION, "Failed to initialize SSL Context with certificate.");
+
+        /* Assign the private key to the SSL object. */
+        if(SSL_CTX_use_PrivateKey(ssl_ctx, pkey) != 1)
+            return debug::error(FUNCTION, "Failed to initialize SSL Context with private key.");
+
+        return true;
+    }
+
+
+    /* Check the authenticity of the public key in the certificate and the private key paired with it. */
+    bool X509Cert::Verify(SSL *ssl)
+    {
+        if(SSL_check_private_key(ssl) != 1)
+            return debug::error(FUNCTION, "Private key does not match the certificate public key.");
+
+        return true;
+    }
+
+
+    /* Check the authenticity of the public key in the certificate and the private key paired with it. */
+    bool X509Cert::Verify(SSL_CTX *ssl_ctx)
+    {
+        if(SSL_CTX_check_private_key(ssl_ctx) != 1)
+            return debug::error(FUNCTION, "Private key does not match the certificate public key.");
 
         return true;
     }
