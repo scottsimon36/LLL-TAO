@@ -117,10 +117,11 @@ TEST_CASE( "Object Register Tests", "[register]" )
 
     {
         Object object;
-        object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-               << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-               << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-               << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
+        object  << std::string("balance")       << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                << std::string("trust")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                << std::string("stake")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                << std::string("pending_stake") << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
 
         //parse object

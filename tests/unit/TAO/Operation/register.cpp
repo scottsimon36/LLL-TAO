@@ -71,10 +71,11 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             tx.hashGenesis = LLC::GetRand256();
 
             TAO::Register::Object object;
-            object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
+            object  << std::string("balance")       << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("trust")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("stake")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("pending_stake") << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
             //run tests
             REQUIRE(Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
@@ -98,8 +99,10 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             REQUIRE(object.Base()     == OBJECTS::ACCOUNT);
 
             //check values
-            REQUIRE(object.get<uint64_t>("balance") == 0);
-            REQUIRE(object.get<uint64_t>("trust")   == 0);
+            REQUIRE(object.get<uint64_t>("balance")        == 0);
+            REQUIRE(object.get<uint64_t>("trust")          == 0);
+            REQUIRE(object.get<uint64_t>("stake")          == 0);
+            REQUIRE(object.get<uint64_t>("pending_stake")  == 0);
             REQUIRE(object.get<uint256_t>("token_address") == 0);
         }
     }
@@ -200,10 +203,11 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             tx.hashGenesis = LLC::GetRand256();
 
             TAO::Register::Object object;
-            object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-                   << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
+            object  << std::string("balance")       << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+                    << std::string("trust")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("stake")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("pending_stake") << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
             //run tests
             REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
@@ -222,10 +226,11 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             tx.hashGenesis = LLC::GetRand256();
 
             TAO::Register::Object object;
-            object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-                   << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-                   << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
+            object  << std::string("balance")       << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("trust")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+                    << std::string("stake")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("pending_stake") << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
             //run tests
             REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
@@ -244,10 +249,11 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             tx.hashGenesis = LLC::GetRand256();
 
             TAO::Register::Object object;
-            object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-                   << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
+            object  << std::string("balance")       << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("trust")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("stake")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+                    << std::string("pending_stake") << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
             //run tests
             REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
@@ -266,10 +272,11 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             tx.hashGenesis = LLC::GetRand256();
 
             TAO::Register::Object object;
-            object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(55);
+            object  << std::string("balance")       << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("trust")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("stake")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("pending_stake") << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+                    << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
             //run tests
             REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
@@ -288,10 +295,11 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             tx.hashGenesis = LLC::GetRand256();
 
             TAO::Register::Object object;
-            object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                   << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-                   << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(55);
+            object  << std::string("balance")       << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("trust")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("stake")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("pending_stake") << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(55);
 
             //run tests
             REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
