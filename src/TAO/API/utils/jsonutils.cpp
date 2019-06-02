@@ -575,10 +575,6 @@ namespace TAO
 
                     ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
 
-                    /* General trust account output same as ACCOUNT. Leave off stake-related values */
-                    //ret["trust"]    = (double)object.get<uint64_t>("trust") / pow(10, nDigits);
-                    //ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDigits);
-
                 }
                 else if(nStandard == TAO::Register::OBJECTS::TOKEN)
                 {
