@@ -25,8 +25,8 @@ namespace TAO
     namespace Operation
     {
 
-        /* Move from stake to balance for trust account (unlock stake). */
-        bool Unstake(const uint64_t nAmount, const uint64_t nTrustPenalty, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        /* Move from stake to balance for trust account. */
+        bool Unstake(const uint256_t& hashAddress, const uint64_t nAmount, const uint64_t nTrustPenalty, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Read the register from the database. */
             TAO::Register::Object trustAccount;
@@ -34,10 +34,11 @@ namespace TAO
             /* Write pre-states. */
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
-                /* Set the register pre-states. */
-                if(!LLD::regDB->ReadTrust(tx.hashGenesis, trustAccount)) //TODO: memory states for this index
-                        return debug::error(FUNCTION, "Trust address doesn't exist ", tx.hashGenesis.ToString());
+                /* Unstake can be pre-Genesis or post-Genesis, so Stake uses hashAddress because account might not be indexed */
+                if(!LLD::regDB->ReadState(hashAddress, trustAccount, nFlags))
+                    return debug::error(FUNCTION, "Trust register address doesn't exist ", hashAddress.ToString());
 
+                /* Set the register pre-states. */
                 tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << trustAccount;
             }
 
@@ -69,26 +70,52 @@ namespace TAO
             uint64_t nTrustPrev = trustAccount.get<uint64_t>("trust");
             uint64_t nBalancePrev = trustAccount.get<uint64_t>("balance");
             uint64_t nStakePrev = trustAccount.get<uint64_t>("stake");
+            uint64_t nPendingStakePrev = trustAccount.get<uint64_t>("pending_stake");
 
-            if(nAmount > nStakePrev)
+            if(nAmount > (nStakePrev + nPendingStakePrev))
                 return debug::error(FUNCTION, "cannot unstake more than existing stake balance");
 
             /* Move requested funds from stake to balance */
-            uint64_t nTrust = std::max((nTrustPrev - nTrustPenalty), (uint64_t)0);
-            uint64_t nBalance = nBalancePrev + nAmount;
-            uint64_t nStake = nStakePrev - nAmount;
+            uint64_t nTrust = 0;
+            uint64_t nBalance = 0;
+            uint64_t nStake = 0;
+            uint64_t nPendingStake = 0;
+
+            if(nAmount <= nPendingStakePrev)
+            {
+                /* Entire unstake amount covered by pending stake balance. Only move from there. No trust penalty */
+                nTrust = nTrustPrev;
+                nStake = nStakePrev;
+                nPendingStake = nPendingStakePrev - nAmount;
+                nBalance = nBalancePrev + nAmount;
+            }
+            else
+            {
+                /* Amount is more than current pending stake. Move any remainder from stake and apply trust penalty */
+                if (nTrustPrev > nTrustPenalty)
+                    nTrust = nTrustPrev - nTrustPenalty;
+                else
+                    nTrust = 0;
+
+                nStake = nStakePrev - (nAmount - nPendingStakePrev);
+                nPendingStake = 0;
+                nBalance = nBalancePrev + nAmount;
+            }
 
             /* Write the new trust to object register. */
             if(!trustAccount.Write("trust", nTrust))
                 return debug::error(FUNCTION, "trust could not be written to object register");
 
-            /* Write the new balance to object register. */
-            if(!trustAccount.Write("balance", nBalance))
-                return debug::error(FUNCTION, "balance could not be written to object register");
-
             /* Write the new stake to object register. */
             if(!trustAccount.Write("stake", nStake))
                 return debug::error(FUNCTION, "stake could not be written to object register");
+
+            if(!trustAccount.Write("pending_stake", nPendingStake))
+                return debug::error(FUNCTION, "stake could not be written to object register");
+
+            /* Write the new balance to object register. */
+            if(!trustAccount.Write("balance", nBalance))
+                return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Update the state register's timestamp. */
             trustAccount.nTimestamp = tx.nTimestamp;
@@ -122,8 +149,10 @@ namespace TAO
                 if(nChecksum != trustAccount.GetHash())
                     return debug::error(FUNCTION, "register script has invalid post-state");
 
-                /* Update the register database with the index. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteTrust(tx.hashGenesis, trustAccount))
+                /* Update the register database with the index.
+                 * As with pre-state, use hashAddress to support both pre-Genesis and post-Genesis.
+                 */
+                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, trustAccount))
                     return debug::error(FUNCTION, "failed to write new state");
 
             }

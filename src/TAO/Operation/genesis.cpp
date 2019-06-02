@@ -35,16 +35,15 @@ namespace TAO
 
             /* Check that a trust register exists. */
             if(LLD::regDB->HasTrust(tx.hashGenesis))
-                return debug::error(FUNCTION, "cannot create genesis when already exists");
+                return debug::error(FUNCTION, "cannot create genesis when trust account previously indexed");
 
             TAO::Register::Object trustAccount;
 
             /* Write pre-states. */
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
-                
                 if(!LLD::regDB->ReadState(hashAddress, trustAccount, nFlags))
-                    return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
+                    return debug::error(FUNCTION, "Trust register address doesn't exist ", hashAddress.ToString());
 
                 /* Set the register pre-states. */
                 tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << trustAccount;
@@ -83,17 +82,24 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot create genesis with already existing trust");
 
             uint64_t nBalancePrev = trustAccount.get<uint64_t>("balance");
+            uint64_t nStakeAmount = trustAccount.get<uint64_t>("pending_stake");
 
-            /* Check that account has balance. */
-            if(nBalancePrev == 0)
-                return debug::error(FUNCTION, "cannot create genesis with no available balance");
+            /* Check that account has stake amount. */
+            if(nStakeAmount == 0)
+                return debug::error(FUNCTION, "trust account has no stake balance for Genesis");
 
-            /* Move existing balance to stake. */
-            if(!trustAccount.Write("stake", nBalancePrev))
+            /* Update account balance with coinstake reward */
+            uint64_t nBalance = nBalancePrev + nCoinstakeReward;
+
+            /* Move pending_stake to stake */
+            if(!trustAccount.Write("stake", nStakeAmount))
                 return debug::error(FUNCTION, "stake could not be written to object register");
 
-            /* Write the new balance to object register. Previous balance was just moved to stake, so new balance is only the coinstake reward */
-            if(!trustAccount.Write("balance", nCoinstakeReward))
+            if(!trustAccount.Write("pending_stake", (uint64_t)0))
+                return debug::error(FUNCTION, "pending stake could not be written to object register");
+
+            /* Write the new balance to object register. */
+            if(!trustAccount.Write("balance", nBalance))
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Update the state register's timestamp. */

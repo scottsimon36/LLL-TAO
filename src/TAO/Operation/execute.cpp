@@ -278,12 +278,16 @@ namespace TAO
                         /* Move funds from trust account balance to stake. Requires an account. */
                         case OP::STAKE:
                         {
+                            /* The register address of the trust account. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
                             /* Amount to of funds to move. */
                             uint64_t nAmount;
                             tx.ssOperation >> nAmount;
 
                             /* Execute the operation method. */
-                            if(!Stake(nAmount, nFlags, tx))
+                            if(!Stake(hashAddress, nAmount, nFlags, tx))
                                 return false;
 
                             break;
@@ -293,6 +297,10 @@ namespace TAO
                         /* Move funds from trust account stake to balance. Requires an account. */
                         case OP::UNSTAKE:
                         {
+                            /* The register address of the trust account. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
                             /* Amount of funds to move. */
                             uint64_t nAmount;
                             tx.ssOperation >> nAmount;
@@ -302,7 +310,7 @@ namespace TAO
                             tx.ssOperation >> nTrustPenalty;
 
                             /* Execute the operation method. */
-                            if(!Unstake(nAmount, nTrustPenalty, nFlags, tx))
+                            if(!Unstake(hashAddress, nAmount, nTrustPenalty, nFlags, tx))
                                 return false;
 
                             break;

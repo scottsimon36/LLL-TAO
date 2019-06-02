@@ -98,11 +98,15 @@ namespace TAO
                         if(object.get<uint64_t>("balance") != 0)
                             return debug::error(FUNCTION, "trust account can't be created with non-zero balance ", object.get<uint64_t>("balance"));
 
-                        /* Check the account balance. */
+                        /* Check the stake balance. */
                         if(object.get<uint64_t>("stake") != 0)
                             return debug::error(FUNCTION, "trust account can't be created with non-zero stake ", object.get<uint64_t>("stake"));
 
-                        /* Check the account balance. */
+                        /* Check the pending stake balance. */
+                        if(object.get<uint64_t>("pending_stake") != 0)
+                            return debug::error(FUNCTION, "trust account can't be created with non-zero stake amount ", object.get<uint64_t>("pending_stake"));
+
+                        /* Check the trust. */
                         if(object.get<uint64_t>("trust") != 0)
                             return debug::error(FUNCTION, "trust account can't be created with non-zero trust ", object.get<uint64_t>("trust"));
 
