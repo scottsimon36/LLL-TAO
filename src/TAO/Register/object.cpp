@@ -77,7 +77,8 @@ namespace TAO
                     nType = OBJECTS::TOKEN;
                 }
                 else if(Check("trust", TYPES::UINT64_T, true)
-                     && Check("stake", TYPES::UINT64_T, true))
+                     && Check("stake", TYPES::UINT64_T, true)
+                     && Check("pending_stake", TYPES::UINT64_T, true))
                 {
                     /* Set the return value. */
                     nType = OBJECTS::TRUST;

@@ -91,7 +91,8 @@ namespace TAO
 
             ret["balance"] = (double)trustAccount.get<uint64_t>("balance") / TAO::Ledger::NXS_COIN;
 
-            ret["stake"] = (double)trustAccount.get<uint64_t>("stake") / TAO::Ledger::NXS_COIN;
+            uint64_t nStakeAmount = trustAccount.get<uint64_t>("stake") + trustAccount.get<uint64_t>("pending_stake");
+            ret["stake"] = (double)nStakeAmount / TAO::Ledger::NXS_COIN;
 
             /* Trust is returned as a percentage of maximum */
             uint64_t nTrustScore = trustAccount.get<uint64_t>("trust");

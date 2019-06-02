@@ -44,13 +44,16 @@ namespace TAO
             /* Used to determine collective trust in a register. */
             "trust",
 
-            /* Used to determine total stake for a register. */
+            /* Used to determine locked stake for a register. */
             "stake",
+
+            /* Used to determine non-locked stake for a register. */
+            "pending_stake",
 
             /* Used for internal object register system memory. */
             "system",
 
-            /* USed for object register names. Reserved to never be changed. */
+            /* Used for object register names. Reserved to never be changed. */
             "name"
         };
 

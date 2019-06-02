@@ -87,9 +87,6 @@ namespace TAO
             }
             else
             {
-                /* TODO - Add "pending stake" to trust account and allow set/stake for pre-Genesis */
-                throw APIException(-25, "Cannot set stake for trust account until after Genesis transaction");
-
                 if(!LLD::regDB->ReadState(hashRegister, trustAccount, TAO::Register::FLAGS::MEMPOOL))
                     throw APIException(-24, "Trust account not found");
 
@@ -107,31 +104,42 @@ namespace TAO
 
             uint64_t nBalancePrev = trustAccount.get<uint64_t>("balance");
             uint64_t nStakePrev = trustAccount.get<uint64_t>("stake");
+            uint64_t nPendingStakePrev = trustAccount.get<uint64_t>("pending_stake");
+            uint64_t nStakeTotalPrev = nStakePrev + nPendingStakePrev;
 
-            /* Get the amount to debit. */
-            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * TAO::Ledger::NXS_COIN;
+            /* Get the new total stake amount. */
+            uint64_t nStakeTotal = std::stod(params["amount"].get<std::string>()) * TAO::Ledger::NXS_COIN;
 
-            if(nAmount > nStakePrev)
+            if(nStakeTotal > nStakeTotalPrev)
             {
                 /* Adding to stake from balance */
-                if((nAmount - nStakePrev) > nBalancePrev)
+                uint64_t nAddStake = nStakeTotal - nStakeTotalPrev;
+
+                if(nAddStake > nBalancePrev)
                     throw APIException(-25, "Insufficient trust account balance to add to stake");
 
-                /* Set the transaction payload for stake operation */
-                uint64_t nAddStake = nAmount - nStakePrev;
-
-                tx << (uint8_t)TAO::Operation::OP::STAKE << nAddStake;
+                tx << (uint8_t)TAO::Operation::OP::STAKE << hashRegister << nAddStake;
             }
-            else if (nAmount < nStakePrev)
+            else if (nStakeTotal < nStakeTotalPrev)
             {
                 /* Removing from stake to balance */
-                uint64_t nRemoveStake = nStakePrev - nAmount;
+                uint64_t nRemoveStake = nStakeTotalPrev - nStakeTotal;
 
-                uint64_t nTrustPrev = trustAccount.get<uint64_t>("trust");
-                uint64_t nTrustPenalty = TAO::Ledger::GetUnstakePenalty(nTrustPrev, nStakePrev, nAmount);
+                uint64_t nTrustPenalty = 0;
 
-                tx << (uint8_t)TAO::Operation::OP::UNSTAKE << nRemoveStake << nTrustPenalty;
+                if (nRemoveStake > nPendingStakePrev)
+                {
+                    /* Unstaking more than pending stake amount takes remainder from stake and applies trust penalty */
+                    uint64_t nStake = nStakePrev - (nRemoveStake - nPendingStakePrev);
+                    uint64_t nTrustPrev = trustAccount.get<uint64_t>("trust");
+
+                    nTrustPenalty = TAO::Ledger::GetUnstakePenalty(nTrustPrev, nStakePrev, nStake);
+                }
+
+                tx << (uint8_t)TAO::Operation::OP::UNSTAKE << hashRegister << nRemoveStake << nTrustPenalty;
             }
+            else
+                throw APIException(-22, "No stake change from set stake");
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))

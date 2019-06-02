@@ -290,9 +290,9 @@ namespace TAO
         {
             /* Staking Trust for existing trust account */
             uint64_t nTrustPrev = trustAccount.get<uint64_t>("trust");
-            uint64_t nStake = trustAccount.get<uint64_t>("stake");
+            uint64_t nStakeAmount = trustAccount.get<uint64_t>("stake") + trustAccount.get<uint64_t>("pending_stake");
 
-            if (nStake == 0)
+            if (nStakeAmount == 0)
             {
                 /* Trust account has no stake balance. Increase sleep time to wait for balance. */
                 nSleepTime = 5000;
@@ -329,7 +329,7 @@ namespace TAO
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
                     debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ",
-                               (MinStakeInterval() - nCurrentInterval), " blocks remaining until staking available.");
+                               (MinStakeInterval() - nCurrentInterval + 1), " blocks remaining until staking available.");
 
                 ++nWaitCounter;
 
@@ -340,7 +340,7 @@ namespace TAO
             nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - nTimeLastStake;
 
             /* Calculate the new trust score */
-            nTrust = GetTrustScore(nTrustPrev, nStake, nBlockAge);
+            nTrust = GetTrustScore(nTrustPrev, nBlockAge);
 
             /* Initialize block producer for Trust operation with hashLastTrust, new trust score.
              * The coinstake reward will be added based on time when block is found.
@@ -354,15 +354,17 @@ namespace TAO
         {
             /* Looking to stake Genesis for new trust account */
 
-            /* Validate that have assigned balance for Genesis */
-            if (trustAccount.get<uint64_t>("balance") == 0)
+            /* Validate that have assigned an amount to stake for Genesis.
+             * Only need to use pending_stake because stake balance must be zero for Genesis (verified in FindTrustAccount)
+             */
+            if (trustAccount.get<uint64_t>("pending_stake") == 0)
             {
-                /* Wallet has no balance, or balance unavailable for staking. Increase sleep time to wait for balance. */
+                /* No balance unavailable for staking. Increase sleep time to wait for balance. */
                 nSleepTime = 5000;
 
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
-                    debug::log(0, FUNCTION, "Stake Minter: Trust account has no balance for Genesis.");
+                    debug::log(0, FUNCTION, "Stake Minter: Trust account has no stake balance for Genesis.");
 
                 ++nWaitCounter;
 
@@ -438,7 +440,8 @@ namespace TAO
                 {
                     uint64_t nRemainingWaitTime = (MinCoinAge() - nCoinAge) / 60; //minutes
 
-                    debug::log(0, FUNCTION, "Stake Minter: Stake balance is immature. ", nRemainingWaitTime, " minutes remaining until staking available.");
+                    debug::log(0, FUNCTION, "Stake Minter: Stake balance is immature. ", nRemainingWaitTime,
+                        " minutes remaining until staking available.");
                 }
 
                 ++nWaitCounter;
@@ -476,11 +479,11 @@ namespace TAO
          * Minter can only mine Proof of Stake when current threshold exceeds this value.
          *
          * Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
-         * Weight from staking balance (based on nValue out of coinstake) reduces the required threshold by increasing the denominator.
+         * Weight from staking balance reduces the required threshold by increasing the denominator.
          */
-        uint64_t nStake = trustAccount.get<uint64_t>("stake");
+        uint64_t nStakeAmount = trustAccount.get<uint64_t>("stake") + trustAccount.get<uint64_t>("pending_stake");
 
-        double nRequired = GetRequiredThreshold(nTrustWeight.load(), nBlockWeight.load(), nStake);
+        double nRequired = GetRequiredThreshold(nTrustWeight.load(), nBlockWeight.load(), nStakeAmount);
 
         /* Calculate the target value based on difficulty. */
         LLC::CBigNum bnTarget;
@@ -522,7 +525,8 @@ namespace TAO
 
             /* Log every 1000 attempts */
             if (candidateBlock.nNonce % 1000 == 0)
-                debug::log(3, FUNCTION, "Threshold ", nThreshold, " exceeds required ", nRequired,", mining Proof of Stake with nonce ", candidateBlock.nNonce);
+                debug::log(3, FUNCTION, "Threshold ", nThreshold, " exceeds required ", nRequired,
+                        ", mining Proof of Stake with nonce ", candidateBlock.nNonce);
 
             /* Handle if block is found. */
             uint1024_t stakeHash = candidateBlock.StakeHash();
@@ -545,7 +549,7 @@ namespace TAO
     bool TritiumMinter::ProcessMinedBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
     {
         /* Used to calculate coinstake reward */
-        uint64_t nStake = trustAccount.get<uint64_t>("stake");
+        uint64_t nStakeAmount = trustAccount.get<uint64_t>("stake") + trustAccount.get<uint64_t>("pending_stake");
         uint64_t nStakeTime = 0;
         uint64_t nCoinstakeReward = 0;
 
@@ -554,13 +558,13 @@ namespace TAO
         {
             /* Trust reward based on time since last stake block. */
             nStakeTime = candidateBlock.GetBlockTime() - nTimeLastStake;
-            nCoinstakeReward = GetCoinstakeReward(nStake, nStakeTime, nTrust, isGenesis);
+            nCoinstakeReward = GetCoinstakeReward(nStakeAmount, nStakeTime, nTrust, isGenesis);
         }
         else
         {
             /* Genesis reward based on coin age as defined by register timestamp. */
             nStakeTime = candidateBlock.GetBlockTime() - trustAccount.nTimestamp;
-            nCoinstakeReward = GetCoinstakeReward(nStake, nStakeTime, 0, isGenesis);
+            nCoinstakeReward = GetCoinstakeReward(nStakeAmount, nStakeTime, 0, isGenesis);
         }
 
         /* Add coinstake reward to producer */
