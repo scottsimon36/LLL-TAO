@@ -239,13 +239,15 @@ namespace TAO
                         /* Coinstake operation. Requires an account. */
                         case TAO::Operation::OP::TRUST:
                         {
-                            /* Read values out of operation stream. */
-                            uint256_t hashLastTrust;
+                            /* The last stake transaction for the trust account register. */
+                            uint512_t hashLastTrust;
                             tx.ssOperation >> hashLastTrust;
 
+                            /* The current calculated value for new trust score. */
                             uint64_t nTrustScore;
                             tx.ssOperation >> nTrustScore;
 
+                            /* Coinstake reward paid to trust account by this operation. */
                             uint64_t nCoinstakeReward;
                             tx.ssOperation >> nCoinstakeReward;
 
@@ -257,11 +259,11 @@ namespace TAO
                             if(nState != STATES::PRESTATE)
                                 return debug::error(FUNCTION, "register state not in pre-state");
 
-                            /* Verify the register's prestate. */
+                            /* Retrieve the pre-state register. */
                             State state;
-                            tx.ssRegister  >> state;
+                            tx.ssRegister >> state;
 
-                            /* Write the register from database. */
+                            /* Write pre-state register to database. */
                             if(!LLD::regDB->WriteTrust(tx.hashGenesis, state))
                                 return debug::error(FUNCTION, "failed to rollback to pre-state");
 
@@ -273,6 +275,14 @@ namespace TAO
                         /* Coinstake operation. Requires an account. */
                         case TAO::Operation::OP::GENESIS:
                         {
+                            /* The register address of the trust account that is being staked. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
+                            /* Coinstake reward paid to trust account by this operation. */
+                            uint64_t nCoinstakeReward;
+                            tx.ssOperation >> nCoinstakeReward;
+
                             /* Verify the first register code. */
                             uint8_t nState;
                             tx.ssRegister  >> nState;
@@ -281,24 +291,87 @@ namespace TAO
                             if(nState != STATES::PRESTATE)
                                 return debug::error(FUNCTION, "register state not in pre-state");
 
-                            /* The account that is being staked. */
-                            uint256_t hashAccount;
-                            tx.ssOperation >> hashAccount;
-
-                            uint64_t nCoinstakeReward;
-                            tx.ssOperation >> nCoinstakeReward;
-
-                            /* Verify the register's prestate. */
+                            /* Retrieve the pre-state register. */
                             State state;
                             tx.ssRegister >> state;
 
-                            /* Write the register from database. */
-                            if(!LLD::regDB->WriteState(hashAccount, state))
+                            /* Write pre-state register to database. */
+                            if(!LLD::regDB->WriteState(hashAddress, state))
                                 return debug::error(FUNCTION, "failed to rollback to pre-state");
 
                             /* Erase the genesis to account indexing. */
                             if(!LLD::regDB->EraseTrust(tx.hashGenesis))
                                 return debug::error(FUNCTION, "failed to erase the trust account index");
+
+                            break;
+                        }
+
+
+                        /* Add to stake */
+                        case TAO::Operation::OP::STAKE:
+                        {
+                            /* The register address of the trust account. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
+                            /* Amount to of funds to move. */
+                            uint64_t nAmount;
+                            tx.ssOperation >> nAmount;
+
+                            /* Verify the first register code. */
+                            uint8_t nState;
+                            tx.ssRegister  >> nState;
+
+                            /* Check the state is prestate. */
+                            if(nState != STATES::PRESTATE)
+                                return debug::error(FUNCTION, "register state not in pre-state");
+
+                            /* Retrieve the pre-state register. */
+                            State state;
+                            tx.ssRegister >> state;
+
+                            /* Write pre-state register to database.
+                             * Use WriteState because trust account may or may not be indexed when Stake
+                             */
+                            if(!LLD::regDB->WriteState(hashAddress, state))
+                                return debug::error(FUNCTION, "failed to rollback to pre-state");
+
+                            break;
+                        }
+
+
+                        /* Remove from stake */
+                        case TAO::Operation::OP::UNSTAKE:
+                        {
+                            /* The register address of the trust account. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
+                            /* Amount of funds to move. */
+                            uint64_t nAmount;
+                            tx.ssOperation >> nAmount;
+
+                            /* Trust score penalty from unstake. */
+                            uint64_t nTrustPenalty;
+                            tx.ssOperation >> nTrustPenalty;
+
+                            /* Verify the first register code. */
+                            uint8_t nState;
+                            tx.ssRegister  >> nState;
+
+                            /* Check the state is prestate. */
+                            if(nState != STATES::PRESTATE)
+                                return debug::error(FUNCTION, "register state not in pre-state");
+
+                            /* Retrieve the pre-state register. */
+                            State state;
+                            tx.ssRegister >> state;
+
+                            /* Write pre-state register to database.
+                             * Use WriteState because trust account may or may not be indexed when Unstake
+                             */
+                            if(!LLD::regDB->WriteState(hashAddress, state))
+                                return debug::error(FUNCTION, "failed to rollback to pre-state");
 
                             break;
                         }
