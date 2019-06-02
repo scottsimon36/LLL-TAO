@@ -100,13 +100,12 @@ namespace TAO
          *  Calculate new trust score from parameters.
          *
          *  @param[in] nTrustPrev - previous trust score of trust account
-         *  @param[in] nStake - current stake balance
          *  @param[in] nBlockAge - current block age (time since last stake block for trust account)
          *
          *  @return new value for trust score
          *
          **/
-        uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge);
+        uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nBlockAge);
 
 
         /** GetUnstakePenalty

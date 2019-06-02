@@ -88,7 +88,7 @@ namespace TAO
 
 
         /* Calculate new trust score from parameters. */
-        uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge)
+        uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nBlockAge)
         {
             uint64_t nTrust = 0;
             uint64_t nTrustMax = MaxTrustScore();
