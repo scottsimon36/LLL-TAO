@@ -90,18 +90,10 @@ namespace TAO
 
             bool fUseSSL = config::GetBoolArg(std::string("-ssl"));
 
-            std::string strHTTP;
-
-            if(fUseSSL)
-                strHTTP = " HTTPS/1.1\r\n";
-            else
-                strHTTP = " HTTP/1.1\r\n";
-
-
             /* Build the HTTP Header. */
             std::string strContent = parameters.dump();
             std::string strReply = debug::safe_printstr(
-                    "POST /", endpoint.substr(0, pos), "/", endpoint.substr(pos + 1), strHTTP,
+                    "POST /", endpoint.substr(0, pos), "/", endpoint.substr(pos + 1), " HTTP/1.1\r\n",
                     "Date: ", debug::rfc1123Time(), "\r\n",
                     "Connection: close\r\n",
                     "Content-Length: ", strContent.size(), "\r\n",

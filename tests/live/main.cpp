@@ -35,42 +35,6 @@ ________________________________________________________________________________
 #include <memory.h>
 #include <unistd.h>
 
-void PrintCert(X509 *cert)
-{
-    if(cert != nullptr)
-    {
-        char *str = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
-        debug::log(0, "subject: ", str);
-        OPENSSL_free(str);
-        str = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
-        debug::log(0, "issuer: ", str);
-        OPENSSL_free(str);
-    }
-}
-
-
-void PeerCertificateInfo(SSL *ssl)
-{
-    X509 *peer_cert = SSL_get_peer_certificate(ssl);
-    if(peer_cert != nullptr)
-    {
-        debug::log(0, "Peer certificate:");
-
-        PrintCert(peer_cert);
-
-        X509_free(peer_cert);
-    }
-    else
-        debug::log(0, "Peer does not have certificate.");
-}
-
-static int always_true_callback(X509_STORE_CTX *ctx, void *arg)
-{
-    printf("callback!\n");
-
-    return 1;
-}
-
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
@@ -78,21 +42,37 @@ int main(int argc, char** argv)
     config::ParseParameters(argc, argv);
     LLC::X509Cert certificate;
 
+
+    if(config::GetBoolArg("-listen") && certificate.Read())
+        debug::log(0, "Read");
+    else if(certificate.Generate())
+        debug::log(0, "Generated");
+
+    if(certificate.Verify())
+        debug::log(0, "Verified");
+
+
     debug::log(0, "My certificate: ");
     certificate.Print();
 
-    certificate.Write();
+    //certificate.Write();
 
     SSL_load_error_strings();
     ERR_load_crypto_strings();
 
     OpenSSL_add_ssl_algorithms();
 
+    /* If using a generic method (i.e) *_method() and not *_server_method or *_client_method,
+     * then SSl objects will need SSL_set_accept_state() or SSL_set_connect_state() before connecting */
     SSL_CTX *ssl_ctx = SSL_CTX_new(SSLv23_method());
 
-    SSL_CTX_set_cert_verify_callback(ssl_ctx, always_true_callback, NULL);
+    SSL_CTX_load_verify_locations(ssl_ctx, X509_get_default_cert_dir(), NULL);
 
-    debug::log(0, "Default director path: ", X509_get_default_cert_dir());
+    SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER, LLC::always_true_callback);
+    //SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_NONE, nullptr);
+
+    //debug::log(0, "Default directory path: ", X509_get_default_cert_dir());
+
 
     certificate.Init_SSL(ssl_ctx);
     certificate.Verify(ssl_ctx);
@@ -119,73 +99,83 @@ int main(int argc, char** argv)
 
         err = bind(listen_sd, (struct sockaddr*)&sa_serv, sizeof(sa_serv));
         if(err == -1)
-        debug::error("bind");
+            debug::error("bind");
 
         /* Receive a TCP connection. */
         err = listen(listen_sd, 5);
         if(err == -1)
-        debug::error("listen");
+            debug::error("listen");
 
-        //while(true)
-        //{
+        while(true)
+        {
 
             struct sockaddr_in sa_cli;
             socklen_t client_len = sizeof(sa_cli);
             sd = accept(listen_sd, (struct sockaddr*) &sa_cli, &client_len);
             if(sd == -1)
+            {
                 debug::error("accept");
-
+                continue;
+            }
 
             //close(listen_sd);
 
-            printf ("Connection from %x, port %u\n", sa_cli.sin_addr.s_addr, sa_cli.sin_port);
 
-            SSL_set_fd (ssl, sd);
+            debug::log(0, "Connection from ", sa_cli.sin_addr.s_addr, ", port ",  sa_cli.sin_port);
+
+            ssl = SSL_new(ssl_ctx);
+
+            SSL_set_fd(ssl, sd);
+            SSL_set_accept_state(ssl);
+
             err = SSL_accept(ssl);
             if(err == -1)
             {
                 debug::error("SSL_accept: ", SSL_get_error(ssl, err));
                 ERR_print_errors_fp(stderr);
+                //SSL_shutdown(ssl); /* send SSL/TLS close_notify */
+                //SSL_clear(ssl);
+                close(sd);
+                SSL_free(ssl);
+                continue;
             }
 
             debug::log(0, "SSL connection using ", SSL_get_cipher(ssl));
 
-            int rc = SSL_get_verify_result(ssl);
-            if(rc != X509_V_OK)
-            {
-                if (rc == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT || rc == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN)
-                {
-                    debug::error("self signed certificate");
-                }
-                else
-                {
-                    debug::error("Certificate verification error: ", SSL_get_verify_result(ssl));
-                    SSL_CTX_free(ssl_ctx);
-                    return 0;
-                }
-            }
+            LLC::PeerCertificateInfo(ssl);
 
-            //PeerCertificateInfo(ssl);
+            //err = recv(sd, buf, sizeof(buf) - 1, MSG_DONTWAIT);
+            //if(err)
+            //{
+            //    buf[err] = '\0';
+            //    debug::log(0, "Got ", err, " chars: ", buf);
+            //}
 
-            err = recv(sd, buf, sizeof(buf) - 1, MSG_DONTWAIT);
-            if(err != -1)
-                buf[err] = '\0';
-
-            debug::log(0, "Got ", err, " chars: ", buf);
 
             err = SSL_read(ssl, buf, sizeof(buf) - 1);
             if(err == -1)
                 debug::error("SSL_read");
 
-            buf[err] = '\0';
-
-            debug::log(0, "SSL: Got ", err, " chars: ", buf);
+            if(err >= 0)
+            {
+                buf[err] = '\0';
+                debug::log(0, "SSL: Got ", err, " chars: ", buf);
+            }
 
             err = SSL_write(ssl, "I hear you.", strlen("I hear you."));
             if(err == -1)
                 debug::error("SSL_write");
 
-        //}
+
+            SSL_shutdown(ssl); /* send SSL/TLS close_notify */
+            //SSL_clear(ssl);
+            SSL_free(ssl);
+            close(sd);
+
+
+
+        }
+
 
 
     }
@@ -203,36 +193,72 @@ int main(int argc, char** argv)
         err = connect(sd, (struct sockaddr*) &sa,  sizeof(sa));
 
         if(err == -1)
+        {
             debug::error("connect");
 
+            SSL_shutdown(ssl); /* send SSL/TLS close_notify */
+            close(sd);
+            SSL_free(ssl);
+            SSL_CTX_free(ssl_ctx);
+            return 0;
+        }
+
+
         SSL_set_fd(ssl, sd);
+        SSL_set_connect_state(ssl);
+
         err = SSL_connect(ssl);
         if(err == -1)
+        {
             debug::error("SSL_connect");
+
+            SSL_shutdown(ssl); /* send SSL/TLS close_notify */
+            close(sd);
+            SSL_free(ssl);
+            SSL_CTX_free(ssl_ctx);
+            return 0;
+        }
+
+
+        err = SSL_do_handshake(ssl);
+        if(err == 1)
+            debug::log(0, "Handshake success");
+        else
+            debug::error("Handshake failed.");
+
 
         debug::log(0, "SSL connection using ", SSL_get_cipher(ssl));
 
-        PeerCertificateInfo(ssl);
+
+        LLC::PeerCertificateInfo(ssl);
 
         err = SSL_write(ssl, "Hello World!", strlen("Hello World!"));
         if(err == -1)
             debug::error("SSL_write");
 
-        err = recv(sd, buf, sizeof(buf) - 1, MSG_DONTWAIT);
-        if(err != -1)
-            buf[err] = '\0';
-        debug::log(0, "Got ", err, " chars: ", buf);
+        //err = recv(sd, buf, sizeof(buf) - 1, MSG_DONTWAIT);
+        //if(err)
+        //{
+        //    buf[err] = '\0';
+        //    debug::log(0, "Got ", err, " chars: ", buf);
+        //}
 
         err = SSL_read(ssl, buf, sizeof(buf) - 1);
-        buf[err] = '\0';
+        if(err >= 0)
+        {
+            buf[err] = '\0';
+            debug::log(0, "SSL: Got ", err, " chars: ", buf);
+        }
 
-        debug::log(0, "SSL: Got ", err, " chars: ", buf);
+        SSL_shutdown(ssl); /* send SSL/TLS close_notify */
+        close(sd);
+
 
     }
 
-    SSL_shutdown(ssl); /* send SSL/TLS close_notify */
 
-    close(sd);
+
+
     SSL_free(ssl);
     SSL_CTX_free(ssl_ctx);
 

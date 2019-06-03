@@ -178,10 +178,6 @@ namespace LLP
         }
 #endif
 
-        /* Set the file descriptor for the SSL socket connection. */
-        if(fSSL)
-            SSL_set_fd(pSSL, fd);
-
         /* Open the socket connection for IPv4 / IPv6. */
         if(addrDest.IsIPv4())
         {
@@ -200,10 +196,7 @@ namespace LLP
              * Then we have to use select below to check if connection was made.
              * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
              */
-            if(fSSL)
-                fConnected = (SSL_connect(pSSL) != SOCKET_ERROR);
-            else
-                fConnected = (connect(nFile, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+            fConnected = (connect(nFile, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
         else
         {
@@ -217,10 +210,14 @@ namespace LLP
                 addr = BaseAddress(sockaddr);
             }
 
-            if(fSSL)
-                fConnected = (SSL_connect(pSSL) != -1);
-            else
-                fConnected = (connect(nFile, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+            fConnected = (connect(nFile, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+        }
+
+        if(fSSL)
+        {
+            SSL_set_fd(pSSL, fd);
+            //SSL_do_handshake(pSSL);
+            fConnected = (SSL_connect(pSSL) != SOCKET_ERROR);
         }
 
         /* Handle final socket checks if connection established with no errors. */

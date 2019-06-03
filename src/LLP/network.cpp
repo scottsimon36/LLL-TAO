@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <openssl/ssl.h>
 
+
 namespace LLP
 {
 
@@ -79,14 +80,21 @@ namespace LLP
         pSSL_CTX = SSL_CTX_new(SSLv23_method());
 
 
+        SSL_CTX_set_verify(pSSL_CTX, SSL_VERIFY_PEER, LLC::always_true_callback);
+
+
         /* Instantiate a certificate for use with SSL context */
         LLC::X509Cert cert;
+
+        cert.Generate();
+        cert.Verify();
+
         if(!cert.Init_SSL(pSSL_CTX))
             return debug::error(FUNCTION, "Certificate Init Failed for SSL Context");
         if(!cert.Verify(pSSL_CTX))
             return debug::error(FUNCTION, "Certificate Verify Failed for SSL Context");
 
-            
+
         debug::log(3, "SSL context and certificate creation complete.");
         debug::log(2, FUNCTION, "Network resource initialization complete");
 

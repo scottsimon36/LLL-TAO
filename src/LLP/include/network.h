@@ -78,7 +78,7 @@ typedef u_int SOCKET;
 
 /** Forward declarations. **/
 typedef struct ssl_ctx_st SSL_CTX;
-
+typedef struct ssl_st SSL;
 
 namespace LLP
 {
@@ -114,6 +114,7 @@ namespace LLP
      *
      **/
     bool NetworkShutdown();
+
 
 }
 

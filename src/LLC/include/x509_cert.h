@@ -23,6 +23,7 @@ typedef struct ssl_st SSL;
 typedef struct rsa_st RSA;
 typedef struct evp_pkey_st EVP_PKEY;
 typedef struct x509_st X509;
+typedef struct x509_store_ctx_st X509_STORE_CTX;
 
 
 namespace LLC
@@ -45,13 +46,23 @@ namespace LLC
 
         /** Write
          *
-         *  Writes the certificate and private key PEM files to an ssl folder located in the default directory path.
+         *  Writes the certificate and private key PEM files to an ssl folder located in the default data path.
          *  The ssl folder will be created if it doesn't exist.
          *
          *  @return Returns true if file writes are successful, false otherwise.
          *
          **/
         bool Write();
+
+
+        /** Read
+         *
+         *  Reads the certificate and private key PEM files from an ssl folder located in the default data path
+         *
+         *  @return Returns true if loaded successfully, false otherwise.
+         *
+         **/
+        bool Read();
 
 
         /** Init_SSL
@@ -81,6 +92,16 @@ namespace LLC
 
         /** Verify
          *
+         *  Check that the private key matches the public key in the x509 certificate.
+         *
+         *  @return Returns true if public and private key are consistent, false otherwise.
+         *
+         **/
+        bool Verify();
+
+
+        /** Verify
+         *
          *  Check the authenticity of the public key in the certificate and the private key paired with it.
          *
          *  @param[in] ssl The ssl object to check.
@@ -88,19 +109,19 @@ namespace LLC
          *  @return Returns true if verified, false otherwise.
          *
          **/
-         bool Verify(SSL *ssl);
+        bool Verify(SSL *ssl);
 
 
-         /** Verify
-          *
-          *  Check the authenticity of the public key in the certificate and the private key paired with it.
-          *
-          *  @param[in] ssl_ctx The ssl context object to check.
-          *
-          *  @return Returns true if verified, false otherwise.
-          *
-          **/
-          bool Verify(SSL_CTX *ssl_ctx);
+        /** Verify
+         *
+         *  Check the authenticity of the public key in the certificate and the private key paired with it.
+         *
+         *  @param[in] ssl_ctx The ssl context object to check.
+         *
+         *  @return Returns true if verified, false otherwise.
+         *
+         **/
+        bool Verify(SSL_CTX *ssl_ctx);
 
 
         /** Print
@@ -111,24 +132,32 @@ namespace LLC
         void Print();
 
 
+        /** Generate
+         *
+         *  Generate the private key and certificate.
+         *
+         *  @return Returns true if successful, false otherwise.
+         *
+         **/
+        bool Generate();
+
+
     private:
 
-        /** init_cert
+        /** init
          *
-         *  Initializes and creates a new certificate signed with a unique RSA private key.
-         *
-         *  @return Returns true if certificate was successfully created, false otherwise.
+         *  Initializes a new certificate and private key.
          *
          **/
-        bool init_cert();
+        void init();
 
 
-        /** free_cert
+        /** shutdown
          *
-         *  Frees memory associated with the certificate and key.
+         *  Frees memory associated with the certificate and private key.
          *
          **/
-        void free_cert();
+        void shutdown();
 
 
         /* The OpenSSL x509 certificate object. */
@@ -137,8 +166,6 @@ namespace LLC
         /* The OpenSSL key object. */
         EVP_PKEY *pkey;
 
-        /* The OpenSSL RSA key object. */
-        RSA *pRSA;
 
         /* The number of bits for the RSA key generation. */
         uint32_t nBits;
@@ -146,7 +173,29 @@ namespace LLC
     };
 
 
+    /** PeerCertificateInfo
+     *
+     *  Print information about peer certificate.
+     *
+     **/
+    void PeerCertificateInfo(SSL *ssl);
 
+
+    /** PrintCert
+     *
+     *  Print information about certificate.
+     *
+     **/
+    void PrintCert(X509 *cert);
+
+
+
+    /** always_true_callback
+     *
+     * Always returns true. Callback function.
+     *
+     **/
+    int always_true_callback(int ok, X509_STORE_CTX *ctx);
 
 }
 
