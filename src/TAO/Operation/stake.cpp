@@ -34,9 +34,17 @@ namespace TAO
             /* Write pre-states. */
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
-                /* Add stake can be pre-Genesis or post-Genesis, so Stake uses hashAddress because account might not be indexed */
-                if(!LLD::regDB->ReadState(hashAddress, trustAccount, nFlags))
-                    return debug::error(FUNCTION, "Trust register address doesn't exist ", hashAddress.ToString());
+                /* Add stake can be pre-Genesis or post-Genesis */
+                if(LLD::regDB->HasTrust(tx.hashGenesis))
+                {
+                    if(!LLD::regDB->ReadTrust(tx.hashGenesis, trustAccount))
+                        return debug::error(FUNCTION, "Trust register address doesn't exist");
+                }
+                else
+                {
+                    if(!LLD::regDB->ReadState(hashAddress, trustAccount, nFlags))
+                        return debug::error(FUNCTION, "Trust register address doesn't exist ", hashAddress.ToString());
+                }
 
                 /* Set the register pre-states. */
                 tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << trustAccount;
@@ -117,11 +125,20 @@ namespace TAO
                 if(nChecksum != trustAccount.GetHash())
                     return debug::error(FUNCTION, "register script has invalid post-state");
 
-                /* Update the register database with the index.
-                 * As with pre-state, use hashAddress to support both pre-Genesis and post-Genesis.
-                 */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, trustAccount))
-                    return debug::error(FUNCTION, "failed to write new state");
+                /* Update the register database with the index. As with pre-state, support both pre-Genesis and post-Genesis. */
+                if((nFlags & TAO::Register::FLAGS::WRITE))
+                {
+                    if(LLD::regDB->HasTrust(tx.hashGenesis))
+                    {
+                        if(!LLD::regDB->WriteTrust(tx.hashGenesis, trustAccount))
+                            return debug::error(FUNCTION, "failed to write trust account");
+                    }
+                    else
+                    {
+                        if(!LLD::regDB->WriteState(hashAddress, trustAccount))
+                            return debug::error(FUNCTION, "failed to write new state");
+                    }
+                }
             }
 
             return true;

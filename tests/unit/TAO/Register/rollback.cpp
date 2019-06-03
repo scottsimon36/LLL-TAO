@@ -983,11 +983,11 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trustAccount.Parse());
 
                 //check register
-                REQUIRE(trustAccount.get<uint64_t>("balance")       == 0);
-                REQUIRE(trustAccount.get<uint64_t>("trust")         == 0);
-                REQUIRE(trustAccount.get<uint64_t>("stake")         == 0);
-                REQUIRE(trustAccount.get<uint64_t>("pending_stake") == 0);
-                REQUIRE(trustAccount.get<uint64_t>("token_address") == 0);
+                REQUIRE(trustAccount.get<uint64_t>("balance")        == 0);
+                REQUIRE(trustAccount.get<uint64_t>("trust")          == 0);
+                REQUIRE(trustAccount.get<uint64_t>("stake")          == 0);
+                REQUIRE(trustAccount.get<uint64_t>("pending_stake")  == 0);
+                REQUIRE(trustAccount.get<uint256_t>("token_address") == 0);
             }
         }
 
@@ -1018,11 +1018,11 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trustAccount.Parse());
 
                 //check balance (claimed Coinbase amount added to balance)
-                REQUIRE(trustAccount.get<uint64_t>("balance")       == 5000);
-                REQUIRE(trustAccount.get<uint64_t>("trust")         == 0);
-                REQUIRE(trustAccount.get<uint64_t>("stake")         == 0);
-                REQUIRE(trustAccount.get<uint64_t>("pending_stake") == 0);
-                REQUIRE(trustAccount.get<uint64_t>("token_address") == 0);
+                REQUIRE(trustAccount.get<uint64_t>("balance")        == 5000);
+                REQUIRE(trustAccount.get<uint64_t>("trust")          == 0);
+                REQUIRE(trustAccount.get<uint64_t>("stake")          == 0);
+                REQUIRE(trustAccount.get<uint64_t>("pending_stake")  == 0);
+                REQUIRE(trustAccount.get<uint256_t>("token_address") == 0);
             }
         }
 
@@ -1036,7 +1036,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload with coinstake reward
-            tx << uint8_t(OP::STAKE) << uint64_t(4000);
+            tx << uint8_t(OP::STAKE) << hashTrust << uint64_t(4000);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -1084,7 +1084,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload with coinstake reward
-            tx << uint8_t(OP::STAKE) << uint64_t(4000);
+            tx << uint8_t(OP::STAKE) << hashTrust << uint64_t(4000);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -1106,7 +1106,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             }
         }
 
-
         //OP::GENESIS rollback
         {
             //create the transaction object
@@ -1126,8 +1125,11 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //check register values
             {
+                //check added to trust index
+                REQUIRE(LLD::regDB->HasTrust(hashGenesis));
+
                 Object trustAccount;
-                REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
                 //parse register
                 REQUIRE(trustAccount.Parse());
@@ -1136,9 +1138,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trustAccount.get<uint64_t>("balance")       == 1005);
                 REQUIRE(trustAccount.get<uint64_t>("pending_stake") == 0);
                 REQUIRE(trustAccount.get<uint64_t>("stake")         == 4000);
-
-                //check added to trust index
-                REQUIRE(LLD::regDB->HasTrust(hashGenesis));
             }
 
             //rollback the genesis
@@ -1146,6 +1145,9 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //check register values
             {
+                //check removed from trust index
+                REQUIRE(!LLD::regDB->HasTrust(hashGenesis));
+
                 Object trustAccount;
                 REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
 
@@ -1156,9 +1158,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trustAccount.get<uint64_t>("balance")       == 1000);
                 REQUIRE(trustAccount.get<uint64_t>("pending_stake") == 4000);
                 REQUIRE(trustAccount.get<uint64_t>("stake")         == 0);
-
-                //check removed from trust index
-                REQUIRE(!LLD::regDB->HasTrust(hashGenesis));
             }
         }
 
@@ -1184,8 +1183,11 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //check register values
             {
+                //check added to trust index
+                REQUIRE(LLD::regDB->HasTrust(hashGenesis));
+
                 Object trustAccount;
-                REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
                 //parse register
                 REQUIRE(trustAccount.Parse());
@@ -1194,9 +1196,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trustAccount.get<uint64_t>("balance")       == 1005);
                 REQUIRE(trustAccount.get<uint64_t>("pending_stake") == 0);
                 REQUIRE(trustAccount.get<uint64_t>("stake")         == 4000);
-
-                //check added to trust index
-                REQUIRE(LLD::regDB->HasTrust(hashGenesis));
             }
         }
 
@@ -1221,7 +1220,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trustAccount;
-                REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
                 //parse register
                 REQUIRE(trustAccount.Parse());
@@ -1238,7 +1237,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trustAccount;
-                REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
                 //parse register
                 REQUIRE(trustAccount.Parse());
@@ -1273,7 +1272,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trustAccount;
-                REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
                 //parse register
                 REQUIRE(trustAccount.Parse());
@@ -1295,7 +1294,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload with removed stake amount and trust penalty
-            tx << uint8_t(OP::UNSTAKE) << uint64_t(1000) << uint64_t(200);
+            tx << uint8_t(OP::UNSTAKE) << hashTrust << uint64_t(1000) << uint64_t(200);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -1306,7 +1305,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trustAccount;
-                REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
                 //parse register
                 REQUIRE(trustAccount.Parse());
@@ -1323,7 +1322,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trustAccount;
-                REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
                 //parse register
                 REQUIRE(trustAccount.Parse());

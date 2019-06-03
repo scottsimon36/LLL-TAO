@@ -76,22 +76,19 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
             REQUIRE(trustAccount.get<uint64_t>("stake")          == 0);
             REQUIRE(trustAccount.get<uint64_t>("pending_stake")  == 0);
             REQUIRE(trustAccount.get<uint256_t>("token_address") == 0);
+
+            //update and write
+            trustAccount.Write("balance", (uint64_t)5000);
+            REQUIRE(trustAccount.get<uint64_t>("balance")        == 5000);
+            REQUIRE(LLD::regDB->WriteState(hashTrust, trustAccount));
         }
 
         {
-            //Add balance manually for further tests
+            //verify update
             TAO::Register::Object trustAccount;
             REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
 
             //parse
-            REQUIRE(trustAccount.Parse());
-
-            //update and write
-            trustAccount.write("balance", (uint64_t)5000);
-            REQUIRE(LLD::regDB->WriteState(hashTrust, trustAccount));
-
-            //verify update
-            REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
             REQUIRE(trustAccount.Parse());
 
             //check values
@@ -113,7 +110,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
         tx.nTimestamp  = runtime::timestamp();
 
         //payload with added stake amount
-        tx << uint8_t(OP::STAKE) << uint64_t(4000);
+        tx << uint8_t(OP::STAKE) << hashTrust << uint64_t(4000);
 
         //generate the prestates and poststates
         REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -123,7 +120,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
         //check register values
         {
-            Object trust;
+            TAO::Register::Object trustAccount;
             REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
 
             //parse register
@@ -157,7 +154,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
         //check register values
         {
-            Object trustAccount;
+            TAO::Register::Object trustAccount;
             REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
 
             //parse register
@@ -198,8 +195,11 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
         //check register values
         {
-            Object trust;
-            REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+            //check trust account indexing
+            REQUIRE(LLD::regDB->HasTrust(hashGenesis));
+
+            TAO::Register::Object trustAccount;
+            REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
             //parse register
             REQUIRE(trustAccount.Parse());
@@ -210,10 +210,6 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
             REQUIRE(trustAccount.get<uint64_t>("stake")          == 4000);
             REQUIRE(trustAccount.get<uint64_t>("pending_stake")  == 0);
             REQUIRE(trustAccount.get<uint256_t>("token_address") == 0);
-
-            //check trust account indexing
-            REQUIRE(LLD::regDB->HasTrust(hashGenesis));
-            REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
         }
     }
 
@@ -240,8 +236,8 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
         //check register values
         {
-            Object trust;
-            REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+            TAO::Register::Object trustAccount;
+            REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
             //parse register
             REQUIRE(trustAccount.Parse());
@@ -278,8 +274,8 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
         //check register values
         {
-            Object trust;
-            REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+            TAO::Register::Object trustAccount;
+            REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
             //parse register
             REQUIRE(trustAccount.Parse());
@@ -303,7 +299,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
         tx.nTimestamp  = runtime::timestamp();
 
         //payload with added stake amount
-        tx << uint8_t(OP::STAKE) << uint64_t(1000);
+        tx << uint8_t(OP::STAKE) << hashTrust << uint64_t(1000);
 
         //generate the prestates and poststates
         REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -313,8 +309,8 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
         //check register values
         {
-            Object trust;
-            REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+            TAO::Register::Object trustAccount;
+            REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
             //parse register
             REQUIRE(trustAccount.Parse());
@@ -338,7 +334,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
         tx.nTimestamp  = runtime::timestamp();
 
         //payload with removed stake amount and trust penalty
-        tx << uint8_t(OP::UNSTAKE) << uint64_t(500) << uint64_t(0);
+        tx << uint8_t(OP::UNSTAKE) << hashTrust << uint64_t(500) << uint64_t(0);
 
         //generate the prestates and poststates
         REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -348,8 +344,8 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
         //check register values
         {
-            Object trust;
-            REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+            TAO::Register::Object trustAccount;
+            REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
             //parse register
             REQUIRE(trustAccount.Parse());
@@ -373,7 +369,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
         tx.nTimestamp  = runtime::timestamp();
 
         //payload with removed stake amount and trust penalty
-        tx << uint8_t(OP::UNSTAKE) << uint64_t(1500) << uint64_t(400);
+        tx << uint8_t(OP::UNSTAKE) << hashTrust << uint64_t(1500) << uint64_t(400);
 
         //generate the prestates and poststates
         REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -383,8 +379,8 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
         //check register values
         {
-            Object trust;
-            REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+            TAO::Register::Object trustAccount;
+            REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
             //parse register
             REQUIRE(trustAccount.Parse());
@@ -408,7 +404,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
         tx.nTimestamp  = runtime::timestamp();
 
         //payload with removed stake amount and trust penalty
-        tx << uint8_t(OP::UNSTAKE) << uint64_t(1000) << uint64_t(400);
+        tx << uint8_t(OP::UNSTAKE) << hashTrust << uint64_t(1000) << uint64_t(400);
 
         //generate the prestates and poststates
         REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -418,8 +414,8 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
         //check register values
         {
-            Object trust;
-            REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+            TAO::Register::Object trustAccount;
+            REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
             //parse register
             REQUIRE(trustAccount.Parse());
@@ -456,8 +452,8 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
         //check register values
         {
-            Object trust;
-            REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+            TAO::Register::Object trustAccount;
+            REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
             //parse register
             REQUIRE(trustAccount.Parse());
@@ -481,7 +477,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
         tx.nTimestamp  = runtime::timestamp();
 
         //payload with added stake amount
-        tx << uint8_t(OP::STAKE) << uint64_t(1000);
+        tx << uint8_t(OP::STAKE) << hashTrust << uint64_t(1000);
 
         //generate the prestates and poststates
         REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -491,8 +487,8 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
         //check register values
         {
-            Object trust;
-            REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+            TAO::Register::Object trustAccount;
+            REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
             //parse register
             REQUIRE(trustAccount.Parse());
@@ -529,8 +525,8 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
         //check register values
         {
-            Object trust;
-            REQUIRE(LLD::regDB->ReadState(hashTrust, trustAccount));
+            TAO::Register::Object trustAccount;
+            REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trustAccount));
 
             //parse register
             REQUIRE(trustAccount.Parse());

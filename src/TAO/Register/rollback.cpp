@@ -330,11 +330,17 @@ namespace TAO
                             State state;
                             tx.ssRegister >> state;
 
-                            /* Write pre-state register to database.
-                             * Use WriteState because trust account may or may not be indexed when Stake
-                             */
-                            if(!LLD::regDB->WriteState(hashAddress, state))
-                                return debug::error(FUNCTION, "failed to rollback to pre-state");
+                            /* Write pre-state register to database. Support both pre-Genesis and post-Genesis. */
+                            if(LLD::regDB->HasTrust(tx.hashGenesis))
+                            {
+                                if(!LLD::regDB->WriteTrust(tx.hashGenesis, state))
+                                    return debug::error(FUNCTION, "failed to rollback trust account");
+                            }
+                            else
+                            {
+                                if(!LLD::regDB->WriteState(hashAddress, state))
+                                    return debug::error(FUNCTION, "failed to rollback trust register");
+                            }
 
                             break;
                         }
@@ -367,11 +373,17 @@ namespace TAO
                             State state;
                             tx.ssRegister >> state;
 
-                            /* Write pre-state register to database.
-                             * Use WriteState because trust account may or may not be indexed when Unstake
-                             */
-                            if(!LLD::regDB->WriteState(hashAddress, state))
-                                return debug::error(FUNCTION, "failed to rollback to pre-state");
+                            /* Write pre-state register to database. Support both pre-Genesis and post-Genesis. */
+                            if(LLD::regDB->HasTrust(tx.hashGenesis))
+                            {
+                                if(!LLD::regDB->WriteTrust(tx.hashGenesis, state))
+                                    return debug::error(FUNCTION, "failed to rollback trust account");
+                            }
+                            else
+                            {
+                                if(!LLD::regDB->WriteState(hashAddress, state))
+                                    return debug::error(FUNCTION, "failed to rollback trust register");
+                            }
 
                             break;
                         }
