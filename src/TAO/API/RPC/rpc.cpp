@@ -90,6 +90,7 @@ namespace TAO
             mapFunctions["listtrustkeys"] = Function(std::bind(&RPC::ListTrustKeys, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["repairwallet"] = Function(std::bind(&RPC::RepairWallet, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["rescan"] = Function(std::bind(&RPC::Rescan, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["transactions"] = Function(std::bind(&RPC::Transactions, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["importprivkey"] = Function(std::bind(&RPC::ImportPrivKey, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["dumpprivkey"] = Function(std::bind(&RPC::DumpPrivKey, this, std::placeholders::_1, std::placeholders::_2));
             //mapFunctions["importkeys"] = Function(std::bind(&RPC::ImportKeys, this, std::placeholders::_1, std::placeholders::_2));

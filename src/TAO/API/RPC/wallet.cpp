@@ -12,15 +12,21 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/rpc.h>
-#include <Util/include/json.h>
+
+#include <LLD/include/global.h>
 
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/include/money.h>
+#include <Legacy/include/evaluate.h>
+
 #include <TAO/Ledger/include/chainstate.h>
 #include <Legacy/types/secret.h>
 #include <LLC/include/key.h>
+
+#include <Util/include/json.h>
 #include <Util/include/runtime.h>
+#include <Util/include/convert.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -300,6 +306,130 @@ namespace TAO
 
             return "success";
 
+        }
+
+
+        /* Get transactions listed by address. */
+        json::json RPC::Transactions(const json::json& params, bool fHelp)
+        {
+            if (fHelp || params.size() == 0)
+                return std::string(
+                    "transactions"
+                    " - Scans blockchain for transactions by address.");
+
+            /* Get the address to scan by. */
+            std::string strAddress = params[0].get<std::string>();
+
+            /* Check for optional timestamp to stop at. */
+            uint32_t nTimestamp = runtime::unifiedtimestamp();
+            if(params.size() > 1)
+                nTimestamp = stoul(params[1].get<std::string>());
+
+            /* Keep a tally of the address balance for return. */
+            int64_t nBalance = 0;
+
+            /* Do a batch read from legacy database. */
+            std::vector<Legacy::Transaction> vtx;
+            if(!LLD::legacyDB->BatchRead("tx", vtx, 1000))
+                return 0;
+
+            /* Loop in batches of 1000 until finished. */
+            json::json ret;
+            uint512_t hashLast = vtx.back().GetHash();
+
+            /* Reduce overall database reads. */
+            std::map<uint512_t, Legacy::Transaction> mapPrev;
+            do
+            {
+                /* Loop through found transactions. */
+                for(const auto& tx : vtx)
+                {
+                    /* Check the timestamp. */
+                    if(tx.nTime > nTimestamp)
+                    {
+                        json::json obj;
+                        obj["balance"] = Legacy::SatoshisToAmount(nBalance);
+
+                        ret.push_back(obj);
+                        return ret;
+                    }
+
+                    /* Get all the inputs from transaction. */
+                    for(const auto& in : tx.vin)
+                    {
+                        /* Filter duplicates. */
+                        if(mapPrev.count(in.prevout.hash))
+                        {
+                            /* Read previous tx. */
+                            Legacy::Transaction txPrev = mapPrev[in.prevout.hash];
+
+                            /* Extract the address. */
+                            Legacy::NexusAddress addr;
+                            if(!Legacy::ExtractAddress(txPrev.vout[in.prevout.n].scriptPubKey, addr))
+                                continue;
+
+                            /* Filter duplicates. */
+                            if(addr.ToString() == strAddress)
+                            {
+                                /* Reduce balance for inputs. */
+                                nBalance -= txPrev.vout[in.prevout.n].nValue;
+
+                                /* Build json object. */
+                                json::json obj;
+                                obj["address"] = strAddress;
+                                obj["debit"]   = Legacy::SatoshisToAmount(txPrev.vout[in.prevout.n].nValue);
+                                obj["balance"] = Legacy::SatoshisToAmount(nBalance);
+                                obj["date"]    = convert::DateTimeStrFormat(tx.nTime);
+
+                                /* Push to return. */
+                                ret.push_back(obj);
+                            }
+                        }
+                    }
+
+                    /* Get all the outputs from transaction. */
+                    for(const auto& out : tx.vout)
+                    {
+                        /* Extract the address. */
+                        Legacy::NexusAddress addr;
+                        if(!Legacy::ExtractAddress(out.scriptPubKey, addr))
+                            continue;
+
+                        /* Filter duplicates. */
+                        if(addr.ToString() == strAddress)
+                        {
+                            /* Increase balance for inputs. */
+                            nBalance += out.nValue;
+
+                            /* Build json object. */
+                            json::json obj;
+                            obj["address"] = strAddress;
+                            obj["credit"]  =  Legacy::SatoshisToAmount(out.nValue);
+                            obj["balance"] = Legacy::SatoshisToAmount(nBalance);
+                            obj["date"]    =  convert::DateTimeStrFormat(tx.nTime);
+
+                            /* Push to return. */
+                            ret.push_back(obj);
+
+                            /* Add the transaction for possible input. */
+                            mapPrev[tx.GetHash()] = tx;
+                        }
+                    }
+                }
+
+                /* Set hash Last. */
+                hashLast = vtx.back().GetHash();
+
+                /* Clear the transactions. */
+                vtx.clear();
+
+            } while(!config::fShutdown.load() && LLD::legacyDB->BatchRead(std::make_pair(std::string("tx"), hashLast), "tx", vtx, 1000));
+
+            json::json obj;
+            obj["balance"] =  Legacy::SatoshisToAmount(nBalance);
+
+            ret.push_back(obj);
+            return ret;
         }
 
         /* importprivkey <PrivateKey> [label]

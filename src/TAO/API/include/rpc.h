@@ -854,6 +854,19 @@ namespace TAO
             json::json Rescan(const json::json& params, bool fHelp);
 
 
+            /** Transactions
+             *
+             *  transactions <address>
+             *  Gets all transactions for specified address.
+             *
+             *  @param[in] params Parameters array passed by the caller.
+             *
+             *  @return JSON containing the information.
+             *
+             **/
+            json::json Transactions(const json::json& params, bool fHelp);
+
+
             /** ImportPrivKey
             *
             *  importprivkey <PrivateKey> [label]
