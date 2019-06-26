@@ -355,65 +355,90 @@ namespace TAO
                     }
 
                     /* Get all the inputs from transaction. */
-                    for(const auto& in : tx.vin)
                     {
-                        /* Filter duplicates. */
-                        if(mapPrev.count(in.prevout.hash))
+                        /* Start JSON object. */
+                        json::json obj;
+                        for(const auto& in : tx.vin)
                         {
-                            /* Read previous tx. */
-                            Legacy::Transaction txPrev = mapPrev[in.prevout.hash];
+                            /* Filter duplicates. */
+                            if(mapPrev.count(in.prevout.hash))
+                            {
+                                /* Read previous tx. */
+                                Legacy::Transaction txPrev = mapPrev[in.prevout.hash];
 
+                                /* Extract the address. */
+                                Legacy::NexusAddress addr;
+                                if(!Legacy::ExtractAddress(txPrev.vout[in.prevout.n].scriptPubKey, addr))
+                                    continue;
+
+                                /* Filter duplicates. */
+                                if(addr.ToString() == strAddress)
+                                {
+                                    /* Reduce balance for inputs. */
+                                    nBalance -= txPrev.vout[in.prevout.n].nValue;
+
+                                    /* Build json object. */
+                                    if(obj.empty())
+                                    {
+                                        obj["address"] = strAddress;
+                                        obj["debit"]   = Legacy::SatoshisToAmount(txPrev.vout[in.prevout.n].nValue);
+                                        obj["balance"] = Legacy::SatoshisToAmount(nBalance);
+                                        obj["date"]    = convert::DateTimeStrFormat(tx.nTime);
+                                    }
+                                    else
+                                    {
+                                        obj["debit"]   = obj["debit"].get<double>() + (double)Legacy::SatoshisToAmount(txPrev.vout[in.prevout.n].nValue);
+                                        obj["balance"] = Legacy::SatoshisToAmount(nBalance);
+                                    }
+                                }
+                            }
+                        }
+
+                        /* Push to return. */
+                        if(!obj.empty())
+                            ret.push_back(obj);
+
+                    }
+
+                    /* Get all the outputs from transaction. */
+                    {
+                        /* Start JSON object. */
+                        json::json obj;
+                        for(const auto& out : tx.vout)
+                        {
                             /* Extract the address. */
                             Legacy::NexusAddress addr;
-                            if(!Legacy::ExtractAddress(txPrev.vout[in.prevout.n].scriptPubKey, addr))
+                            if(!Legacy::ExtractAddress(out.scriptPubKey, addr))
                                 continue;
 
                             /* Filter duplicates. */
                             if(addr.ToString() == strAddress)
                             {
-                                /* Reduce balance for inputs. */
-                                nBalance -= txPrev.vout[in.prevout.n].nValue;
+                                /* Increase balance for inputs. */
+                                nBalance += out.nValue;
 
                                 /* Build json object. */
-                                json::json obj;
-                                obj["address"] = strAddress;
-                                obj["debit"]   = Legacy::SatoshisToAmount(txPrev.vout[in.prevout.n].nValue);
-                                obj["balance"] = Legacy::SatoshisToAmount(nBalance);
-                                obj["date"]    = convert::DateTimeStrFormat(tx.nTime);
+                                if(obj.empty())
+                                {
+                                    obj["address"] = strAddress;
+                                    obj["credit"]  =  Legacy::SatoshisToAmount(out.nValue);
+                                    obj["balance"] = Legacy::SatoshisToAmount(nBalance);
+                                    obj["date"]    =  convert::DateTimeStrFormat(tx.nTime);
+                                }
+                                else
+                                {
+                                    obj["credit"]  = obj["credit"].get<double>() + (double)Legacy::SatoshisToAmount(out.nValue);
+                                    obj["balance"] = Legacy::SatoshisToAmount(nBalance);
+                                }
 
-                                /* Push to return. */
-                                ret.push_back(obj);
+                                /* Add the transaction for possible input. */
+                                mapPrev[tx.GetHash()] = tx;
                             }
                         }
-                    }
 
-                    /* Get all the outputs from transaction. */
-                    for(const auto& out : tx.vout)
-                    {
-                        /* Extract the address. */
-                        Legacy::NexusAddress addr;
-                        if(!Legacy::ExtractAddress(out.scriptPubKey, addr))
-                            continue;
-
-                        /* Filter duplicates. */
-                        if(addr.ToString() == strAddress)
-                        {
-                            /* Increase balance for inputs. */
-                            nBalance += out.nValue;
-
-                            /* Build json object. */
-                            json::json obj;
-                            obj["address"] = strAddress;
-                            obj["credit"]  =  Legacy::SatoshisToAmount(out.nValue);
-                            obj["balance"] = Legacy::SatoshisToAmount(nBalance);
-                            obj["date"]    =  convert::DateTimeStrFormat(tx.nTime);
-
-                            /* Push to return. */
+                        /* Push to return. */
+                        if(!obj.empty())
                             ret.push_back(obj);
-
-                            /* Add the transaction for possible input. */
-                            mapPrev[tx.GetHash()] = tx;
-                        }
                     }
                 }
 
